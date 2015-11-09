@@ -108,7 +108,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-beta,file:///etc/pki/rpm-gpg/R
 
 Notice that there are two repositories in this file, rhel-source and rhel-soure-beta.  These files tell `yum` to look at some FTP sites hosted by Red Hat when it installs or updates.  There are also some GPG Keys listed so `yum` can verify the packages it's getting were really made by Red Hat (an extra security measure).
 
-### Automatic Updates ###
+### Automatic Updates via Cron###
 
 Updating your system is all well and good, but within days there will again be out-of-date software.  There are a number of ways to manage available updates, but if you are going to be working with a single server or a small amount of servers, it's easiest to just setup a `cron` job to perform your updates for you.  
 
@@ -117,7 +117,7 @@ Updating your system is all well and good, but within days there will again be o
 Below is an example `cron` configuration file:
 
 ```
-# At 1:10 AM every morning, as root, echo 'Hello World'
+# Example Cron Job
 10 1 * * * root echo 'Hello World'
 ```
 
@@ -142,6 +142,17 @@ So, from left to right, the asterisks stand for minute, hour, day of month, mont
 01 14 15 * *  <-- At 2:01 PM on the 15th of the Month
 */30 * * * *  <-- Tricky one!  Every 30 minutes
 ```
+
+And finally that means our Example cron job:
+
+
+```
+# Example Cron Job
+10 1 * * * root echo 'Hello World'
+```
+
+...is "Run at 1:10 AM every day, as root, and echo 'Hello World'".
+
 
 `cron` config files reside in a set of directories in the file system:
 
