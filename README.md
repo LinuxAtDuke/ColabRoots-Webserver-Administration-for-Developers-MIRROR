@@ -48,7 +48,7 @@ Since the VM you're using in this class is a RHEL-based system, we'll use `yum` 
 
 That's it!  All of your packages have the latest patches for your OS.
 
-_Note:_ Due to the way your VM is configured, you may have trouble installing updates because the GPG key for the "satyr" package is missing.
+_Note:_ Due to the way your VM is configured, you may have trouble installing updates because the GPG key for the "satyr" package is missing. I'm working to get this fixed, but for now, just use: `yum update -y --exclude=libreport* --exclude=abrt*`
 
 ### Repositories ###
 
