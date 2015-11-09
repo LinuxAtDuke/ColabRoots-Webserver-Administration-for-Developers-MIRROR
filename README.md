@@ -4,8 +4,32 @@ Web Server Administration for WebApp Developers
 Version: 2015-11-08
 
 Prerequisites
+-------------
 
 Students taking this class should be comfortable with Linux and the Linux command line.  A minimum proficiency is provided by taking and understanding the Linux@Duke "Introduction to Linux" class.
+
+Students should also have created a VM-Manage "RHEL 6 Basic" VM:
+
+1. Using a web browser, go to *https://vm-manage.oit.duke.edu*
+2. Login using your Duke NetId.
+3. Create a new project for this class.
+4. Select *RHEL 6 Basic* for the Server.
+
+The vm-manage web page will tell you the name for your VM. The web site will also tell you the initial username and password. You should connect via ssh.
+
+Example: `ssh bitnami@colab-sbx-87.oit.duke.edu`
+
+6. Once logged in via ssh, enter the `passwd` command to set a unique password.
+
+Example:
+
+```
+$ passwd
+Changing password for bitnami.
+(current) UNIX password:
+Enter new UNIX password:
+Retype new UNIX password:
+```
 
 Basic Server Configuration
 --------------------------
@@ -15,6 +39,7 @@ In this section, you'll learn:
 1. How to update the software on your system
 2. How to setup automatic updates, so you don't have to keep track of them
 3. How to setup SSH Key Authentication to avoid the use of passwords for login
+4. How to setup a host-based firewall with `iptables`
 
 ### Updating the Software on Your VM ###
 
