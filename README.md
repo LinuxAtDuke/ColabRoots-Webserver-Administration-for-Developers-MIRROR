@@ -19,7 +19,7 @@ The vm-manage web page will tell you the name for your VM. The web site will als
 
 Example: `ssh bitnami@colab-sbx-87.oit.duke.edu`
 
-6. Once logged in via ssh, enter the `passwd` command to set a unique password.
+Once logged in via ssh, enter the `passwd` command to set a unique password.
 
 Example:
 
