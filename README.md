@@ -600,15 +600,61 @@ It's important to note that Apache will continue to write to open file handles a
 
 Easier ways of rotating logs can be achieved with other tools.  Out of the box, on RHEL servers, the `logrotate` command is used to manage the default Apache logs, and can be used for other virtual host logs as well.  
 
+Logrotate makes use of cron to execute log rotations on a schedule, during the cron.daily tasks.  Logrotate is managed by a set of configuration files.  Let's look at "/etc/logrotate.d/httpd":
 
+```
+/var/log/httpd/*log {
+    missingok
+    notifempty
+    sharedscripts
+    delaycompress
+    postrotate
+        /sbin/service httpd reload > /dev/null 2>/dev/null || true
+    endscript
+}
+```
 
-Probably the most common is `rotatelogs`, in combination with the `tmpwatch` command.
+Notice that this config is applies to all files in "/var/log/httpd" ending in "log".  The important bits here are how the files are matched on the first line, `postrotate` (and it's delimiter `endscript`, which tells logrotate to reload the Apache service after rotating the logs, and `sharedscripts`, meaning the postrotate script is only run once, after all processing, and not once per log.  Finally `delaycompress` prevents old log files from being immediately compressed (they're compressed during the next logrotate run).  This accomplishes the delay while Apache continues to write to the old log files until the established and pending connections are closed.
 
-- Log Rotation
-- - Rotatelogs + tmpwatch
-    RotateLogs https://httpd.apache.org/docs/2.2/programs/rotatelogs.html
-    tmpwatch http://thelinuxfaq.com/100-how-to-use-tmpwatch-command-in-linux
-- - Logrotate http://www.rackspace.com/knowledge_center/article/understanding-logrotate-utility
+Logrotation can be added for the new virtual host by adding rotate commands for the /var/log/httpd/example.duke.edu/ directory.  It is also possible to list the exact names of the logs to be rotated, if desired:
+
+```
+/var/log/httpd/example.duke.edu/access.log /var/log/httpd/example.duke.edu/error.log {
+...
+```
+
+There are a lot of options for how to manage logs with logrotate. [http://www.rackspace.com/knowledge_center/article/understanding-logrotate-utility](http://www.rackspace.com/knowledge_center/article/understanding-logrotate-utility) is a good write-up on more advanced features of logrotate.
+
+Probably the most common logrotation scheme is `rotatelogs`, in combination with the `tmpwatch` command.  (Yes, I know: logrotate/rotatelogs. They are unfortunately similar.)
+
+Rotatelogs can actually be implemented in the virtual host configuration.  Notice the examples in the template above:
+
+```
+CustomLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/access_log-%Y%m%d 86400" combined
+ErrorLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/error_log-%Y%m%d 86400"
+```
+
+In this case, the logs are being _piped_ directly to the rotatelogs program.  Rotatelogs will write out a logfile to the specificed location - here appending the date in YYYYMMDD format.  Every 24 hours (86400 seconds), the logs are rotated to the next day.  Rotatelogs can also be told to rotate when the logs reach a certain size, or execute another program to handle the logs.  It is versitile and easy to setup.
+
+Rotatelogs will not remove old logs after a certain period the way logrotate can, however.  To do that, it can be paired with `tmpwatch`, a command that does just that.  In fact tmpwatch is already handling the removal of log files in the "/tmp" directory.  It is executing a script in "/etc/cron.daily/tmpwatch". The basic usage for tmpwatch is:
+
+```
+/usr/sbin/tmpwatch <number of days to keep> <directory to clean>
+```
+
+So, to remove logs over 14 days old in your /var/log/httpd/example.duke.edu/ directory, you can setup a cron job to run:
+
+```
+/usr/sbin/tmpwatch 14d /var/log/httpd/example.duke.edu
+```
+
+There's a tmpwatch template in this repo: tmpwatch.tmpl.
+
+_Note:_ Your tmpwatch job should be a bash script and be executable if you plan to use cron.daily to execute it.
+
+Read more about rotatelogs and tmpwatch here:
+    RotateLogs [https://httpd.apache.org/docs/2.2/programs/rotatelogs.html](https://httpd.apache.org/docs/2.2/programs/rotatelogs.html)
+    tmpwatch [http://thelinuxfaq.com/100-how-to-use-tmpwatch-command-in-linux]([http://thelinuxfaq.com/100-how-to-use-tmpwatch-command-in-linux)
 
 ### Performance Tuning ###
 
