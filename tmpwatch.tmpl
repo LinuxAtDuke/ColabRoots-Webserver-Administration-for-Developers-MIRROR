@@ -1,0 +1,11 @@
+#!/bin/bash
+
+/usr/sbin/tmpwatch 14d /var/log/httpd/example.duke.edu
+
+# Alternatively, you can run multiple commands, or build a list of directories to manage:
+#
+# for dir in /var/log/httpd/one /var/log/httpd/two /var/log/httpd/three ; do
+#   if [ -d "$dir" ] ; then
+#     /usr/sbin/tmpwatch 14d "$dir"
+#  fi
+# done
