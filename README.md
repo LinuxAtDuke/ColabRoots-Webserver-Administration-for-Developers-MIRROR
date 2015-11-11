@@ -505,7 +505,7 @@ Virtual Hosts
 
 A lot of Apache's default configuration is designed to be either easy to use, or not really configured for a modern web hosting environment, at least out of the box.  This can lead to poor performance for your application, even with a small amount of load.  However, by tuning some settings, you can easily achieve significantly better performance.
 
-The quickest way to tune your server for best performance is to adjust the number of threads Apache uses to fit within the amount of memory available to your system.  This can be a balancing act.  If there are too few threads, visitors to your site will be stuck waiting for an open thread before the page can even begin to be rendered by their browser.  On the other hand, if there are too many threads, they can easily take up all the available memory on your server, and cause Apache to start writing memory to disk, and since the disk storage is much slower than memory, this will quickly lead to very poor performance from your server.  In severe cases, this can even cause the server to become completely unresponsive.
+The quickest way to tune your server for best performance is to adjust the number of processes Apache uses to fit within the amount of memory available to your system.  This can be a balancing act.  If there are too few processes, visitors to your site will be stuck waiting for an open thread before the page can even begin to be rendered by their browser.  On the other hand, if there are too many processes, they can easily take up all the available memory on your server.  When this happens, Apache will start writing memory to disk. and since the disk storage is much slower than memory, this will quickly lead to very poor performance from your server.  In severe cases, this can even cause the server to become completely unresponsive.
 
 Let's look at this a bit more closely.  The following is a snippet from the `httpd.conf` file showing the default configuration of Apache threads, using the default Multi-Processing Module (MPM):
 
@@ -520,11 +520,65 @@ MaxRequestsPerChild  4000
 </IfModule>
 ```
 
-The "Prefork MPM" (noted above as `prefork.c`) is a non-threaded, pre-forking web server, and is the module that's used if you don't make any changes to your Apache startup.  Apache is generally pretty good at self-managing process creation, so you likely will not need to adjust the `StartServers`, `MinSpareServers`, or `MaxSpareServers` settings.  StartServers is the number of processes Apache creates on startup.  MinSpareServers and MaxSpareServers are the minimum and maximum allowed idle processes, respectively.  (Idle processes are ones that are not handling any requests.)
+The "Prefork MPM" (noted above as `prefork.c`) is a non-threaded, pre-forking web server, and is the module that's used if you don't make any changes to your Apache startup. There are threaded MPMs as well ("Worker", and in Apache 2.4 "Event").  Threaded MPMs generally offer better performance, but can only be used if other modules in use are thread-safe.  For example, mod_php, the module for handling PHP processing, is not thread safe.  In order to use a threaded MPM with PHP, the PHP processing has to be offloaded to another service using something like FastCGI.
 
-The more important settings to be aware of are the `ServerLimit`, `MaxClients`, and `MaxRequestsPerChild`.
+Apache is generally pretty good at self-managing process creation, so you likely will not need to adjust the `StartServers`, `MinSpareServers`, or `MaxSpareServers` settings.  StartServers is the number of processes Apache creates on startup.  MinSpareServers and MaxSpareServers are the minimum and maximum allowed idle processes, respectively.  (Idle processes are ones that are not handling any requests.)
 
-There are threaded MPMs as well ("Worker", and in Apache 2.4 "Event").  Threaded MPMs generally offer better performance, but can only be used if other modules in use are thread-safe.  For example, mod_php, the module for handling PHP processing, is not thread safe.  In order to use a threaded MPM with PHP, the PHP processing has to be offloaded to another service using something like FastCGI.
+The more important settings to be aware of are the `MaxClients` and `ServerLimit`, and `MaxRequestsPerChild`.  MaxClients is the maximum number of processes that Apache is allowed to spawn to handle requests.  Adjusting MaxClients is how a server can be tuned to allow the maximum number of processes to handle requests, while still fitting within the available memory on the system.  `ServerLimit` sets the maximum value for MaxClients (in the Prefork MPM), and should be set close to the same number as MaxClients.  Setting it much higher will allocate shared memory that will never be used.
+
+MaxRequestsPerChild sets how many requests a child process will handle before the process is killed off by the server and replaced with a new one.  A low number will kill child processes frequently.  This can be desirable if there are problems with memory leaks or memory retention, but it does take some resources to create new processes.
+
+Let's see how all this comes together.  Consider this output of the `top` command:
+
+```
+$ top -M -b -n 1 -u apache
+top - 10:27:41 up 625 days, 0 min,  1 user,  load average: 0.34, 0.38, 0.36
+Tasks: 111 total,   1 running, 110 sleeping,   0 stopped,   0 zombie
+Cpu(s):  7.6%us,  1.5%sy,  0.0%ni, 90.6%id,  0.2%wa,  0.0%hi,  0.1%si,  0.0%st
+Mem:  2010.512M total, 1758.734M used,  251.777M free,  108.590M buffers
+Swap: 3999.992M total,   28.770M used, 3971.223M free,  974.949M cached
+
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND            
+20797 apache    15   0  402m  87m  40m S  0.0  4.3   0:06.58 /usr/sbin/httpd    
+20812 apache    15   0  380m  56m  28m S  0.0  2.8   0:06.43 /usr/sbin/httpd    
+20801 apache    15   0  379m  53m  27m S  0.0  2.7   0:04.19 /usr/sbin/httpd    
+20793 apache    15   0  377m  52m  28m S  0.0  2.6   0:06.06 /usr/sbin/httpd    
+22233 apache    15   0  441m  52m  28m S  0.0  2.6   0:05.56 /usr/sbin/httpd    
+20799 apache    15   0  376m  51m  28m S  0.0  2.6   0:05.37 /usr/sbin/httpd    
+20803 apache    16   0  376m  50m  27m S  0.0  2.5   0:07.06 /usr/sbin/httpd    
+20795 apache    15   0  376m  50m  27m S  0.0  2.5   0:05.52 /usr/sbin/httpd    
+20790 apache    15   0  376m  50m  27m S  0.0  2.5   0:05.66 /usr/sbin/httpd    
+22538 apache    15   0  376m  50m  27m S  0.0  2.5   0:05.59 /usr/sbin/httpd    
+20810 apache    15   0  374m  49m  26m S  0.0  2.5   0:05.59 /usr/sbin/httpd    
+20814 apache    15   0  374m  49m  26m S  0.0  2.4   0:05.60 /usr/sbin/httpd    
+ 4700 apache    15   0  438m  47m  25m S  0.0  2.4   0:01.28 /usr/sbin/httpd    
+ 4704 apache    15   0  373m  47m  26m S  0.0  2.4   0:01.33 /usr/sbin/httpd
+ ```
+
+The important things to see here are the total memory available to the system (`Mem: 2010.512M`), and the general Resident Size of the Apache processes (represented by the `RES` column).  The resident size is an accurate representation of the actual amount of system memory used by the process.  Notice above that the total amount of memory available to the server is 2G, and the average resident size for the Apache processes is about 50M.  Dividing the total memory by the average resident size gives us an approximation of the total number of Apache threads that can be running without causing the server to swap, or write memory to disk, in this case 40 (2000M / 50M per process = 40 processes).  In reality, though, the server will need memory for other things, unrelated to Apache.  It's helpful to reserve about 256M for other processes, so a better number of MaxClients for this server is 35 ( 1744M / 50M per process = 34.88 processes).
+
+With that information, we can decide how to effectively tune Apache on the server:
+
+```
+<IfModule prefork.c>
+StartServers       8
+MinSpareServers    5
+MaxSpareServers   20
+ServerLimit       35
+MaxClients        35
+MaxRequestsPerChild  4000
+</IfModule>
+```
+
+The setting above will prevent the server from running completely out of memory and becoming unresponsive, but 35 total processes for an application is very low.  Consider that a modern browser will often open multiple connections to a server, to download the content files in parallel.  A single user can easily use six processes per request.  For the server above, that means only six people can be browsing the site at the same time.
+
+In this case, having a low MaxRequestsPerChild will help some.  Brand new Apache threads (using mod_php) tend to be about 10M on startup, and increase their allocated memory as needed for the requests that they handle.  However, they will never relase that memory - they continue to hang onto the allocated memory regardless of the memory requirements for subsequent requests.  In the example above, the 87m process (pid 20797), has expanded from it's default size up to 87M, probably to handle a php request with a lot of data.  It's very next request could be for an 8k favicon.ico file.  Setting a low MaxRequestsPerChild will allow that thread to die off sooner, and be replaced by a new one.  This is not a perfect solution, though.  Chances are the new thread will to something similar relatively quickly. There are only two real solutions to the problem:  add more memory, or fix the PHP code to use less.
+
+In this case, this is a server with a WordPress website installed on it.  The developer is not particularly skilled at memory management, and the site owner cannot afford more memory, so the server's performance is poor.  The threads are tuned, however, to prevent the server from becoming completely unresponsive.
+
+(There are other ways to handle this as well.  If this server were newer, it could be using PHP-FPM and Apache's Worker or Event MPMs.  Passing off the PHP processing to PHP-FPM is helpful, because it handles memory management better, so there can be more PHP-FPM processes than equivalent Apache+mod_php processes.  This also frees Apache up to handle only static content, making it more efficient as well, and allowing more total Apache threads.
+
+
 
 
 
