@@ -3,7 +3,8 @@ Web Server Administration for WebApp Developers
 
 Version: 2015-11-08
 
-**Class Notes*
+**Class Notes**
+
 [https://gitlab.oit.duke.edu/colabroots/Webserver-Administration-for-Webapp-Developers](https://gitlab.oit.duke.edu/colabroots/Webserver-Administration-for-Webapp-Developers)
 
 **Linux@Duke Public Mirror**
