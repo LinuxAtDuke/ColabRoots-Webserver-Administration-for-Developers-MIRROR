@@ -549,19 +549,61 @@ The `AllowOverride` directive tells Apache whether or not the `Options` directiv
 
 Unlike `<Directory>`, which referes to a **physical location on the filesystem of the webserver**, the `<Location>` stanza refers to a **URI**, or a location relative to the website itself.  In this example, it refers to "example.duke.edu/protected" (and www.example..., and another.example...).  In this stanza, we're introducing some access control.  `Order Allow,Deny` tells Apache which order to evaluate `Allow` and `Deny` directives.  In this case, it looks for any `Allow` directives.  If there are none the request is denied.  Then it looks for any `Deny` directives.  If there are any, the request is rejected.  There are other options here for both `Order`, and the `Allow` and `Deny` directives, including options to authorize by IP address, DNS name, etc., and they can be mixed and matched for a robust system of control.  Check out the documentation for mod_authz_host [https://httpd.apache.org/docs/2.2/mod/mod_authz_host.html](https://httpd.apache.org/docs/2.2/mod/mod_authz_host.html) for more information about access control.
 
-
+```
 CustomLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/access_log-%Y%m%d 86400" combined
 ErrorLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/error_log-%Y%m%d 86400"
+```
 
-- Root Virtual Hosts
+These two lines define separate logs for your virtual host separate from the base server's logs.  We'll focus on how these work in the next section.
 
-- Multiple Virtual Hosts
+_Note:_ Adding multiple virtual hosts is as easy as adding multiple `<VirtualHost>` stanzas, especially with name-based virtual hosts.  You can copy the virtual host template as many times as you like, modifying the specific settings (ie: wherever example.duke.edu appears in the template, and any configuration options) to suit the virtual host you're creating, and then reload the Apache service to make the changes live.
 
+### Logging ###
+
+Logging provides you with a lot of useful information. For one, the request logs will tell you about the request traffic coming into the server and the content it is serving in return.  The error logs are helpful in tracking down problems with the server configuration, code problems, missing pages, etc..  Together, the logs can help you improve the performance of your server, and identify malicious traffic.  In this section, we'll talk about how to setup logging, and how to rotate logs to better organize the data and prevent them from taking too much space on the server.
+
+You can output data from the server in a huge number of formats.  You can explicitly tell Apache how the logs it writes should look, to assist with parsing or making them more human-readable.  However, Apache has been around for a very long time, and much of the world has actually standardized on Apache's log formats, so it's likely that any additional tools you use will support one of Apache's default formats. For this class, and on many webservers, the standard "Combined" log format is used:
+
+"<IP Address> <RFC 1413 Identity Information> <UserID> <Date/time> <Requested URI> <Status Code> <Size of Response> <Referer> <User-Agent>"
+
+An example of this request log format from the Apache website:
+
+```
+127.0.0.1 - frank [10/Oct/2000:13:55:36 -0700] "GET /apache_pb.gif HTTP/1.0" 200 2326 "http://www.example.com/start.html" "Mozilla/4.08 [en] (Win98; I ;Nav)"
+```
+
+There can be multiple request logs for a single virtual host, formated in different ways to allow for different tools.
+
+In addition to regular logs, `conditional` logs can be setup using _environmental variables_:
+
+```
+SetEnvIf Request_URI "^/lb\.html$" lb_log
+CustomLog "|bin/rotatelogs /var/log/httpd/example.duke.edu/lb_log-%Y%m%d" combined env=lb_log
+```
+
+The section above illustrates checking if the REQUEST_URI is "/lb.html".  If so, it's tagged with the environment variable "lb_log".  The second line defines a specific log file to use for any request tagged as "lb_log".  This could be used to split out load balancer health checks from the regular traffic, and make it available separately.
+
+_Note:_ More information about log formats available, and logging in general for Apache can be found at [https://httpd.apache.org/docs/2.2/logs.html](https://httpd.apache.org/docs/2.2/logs.html)
 
 ### Log Rotation ###
-- Logging
-- Log Formats
-    https://httpd.apache.org/docs/2.2/logs.html
+
+There is a huge amount of data sent to the server logs on a webserver.  According to Apache's documentation, every 10,000 requests or so increases the size of a log file by 1MB.  Because of this, it's important to "rotate" logs periodically, usually every 24 hours (although other rules can be set, both by time and logfile size).  It's important to note that the default log configuration doesn't necessarily apply to new logs setup with each virtual host.  Our of the box (on RHEL servers at least), log rotation only happens for the base server logs in /var/log/httpd.
+
+There are a number of different ways to achieve log rotation.  At it's very basic, log rotation consists of:
+
+1. Stopping Apache
+2. Moving existing logs (renaming)
+3. Creating new, empty logs
+4. Starting Apache
+
+It's important to note that Apache will continue to write to open file handles as long as the server is running, even if you delete or move the file.  If the file is deleted without restarting Apache, the space is not freed from disk until the server is restarted.  Because of this, though, you can move the existing files and issue a _graceful_ restart (`$ service httpd graceful`) to rotate the logs without losing any existing connections (ie. transparently to users).  Apache will need to keep those files open for pending connections, though.  Apache suggests waiting five minutes before doing any further processing when rotating this way.
+
+Easier ways of rotating logs can be achieved with other tools.  Out of the box, on RHEL servers, the `logrotate` command is used to manage the default Apache logs, and can be used for other virtual host logs as well.  
+
+
+
+Probably the most common is `rotatelogs`, in combination with the `tmpwatch` command.
+
 - Log Rotation
 - - Rotatelogs + tmpwatch
     RotateLogs https://httpd.apache.org/docs/2.2/programs/rotatelogs.html
