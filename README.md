@@ -547,7 +547,7 @@ The `AllowOverride` directive tells Apache whether or not the `Options` directiv
 </Location>
 ```
 
-Unlike `<Directory>`, which referes to a **physical location on the filesystem of the webserver**, the `<Location>` stanza refers to a **URI**, or a location relative to the website itself.  In this example, it refers to "example.duke.edu/protected" (and www.example..., and another.example...).
+Unlike `<Directory>`, which referes to a **physical location on the filesystem of the webserver**, the `<Location>` stanza refers to a **URI**, or a location relative to the website itself.  In this example, it refers to "example.duke.edu/protected" (and www.example..., and another.example...).  In this stanza, we're introducing some access control.  `Order Allow,Deny` tells Apache which order to evaluate `Allow` and `Deny` directives.  In this case, it looks for any `Allow` directives.  If there are none the request is denied.  Then it looks for any `Deny` directives.  If there are any, the request is rejected.  There are other options here for both `Order`, and the `Allow` and `Deny` directives, including options to authorize by IP address, DNS name, etc., and they can be mixed and matched for a robust system of control.  Check out the documentation for mod_authz_host [https://httpd.apache.org/docs/2.2/mod/mod_authz_host.html](https://httpd.apache.org/docs/2.2/mod/mod_authz_host.html) for more information about access control.
 
 
 CustomLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/access_log-%Y%m%d 86400" combined
