@@ -3,7 +3,17 @@ Web Server Administration for WebApp Developers
 
 Version: 2015-11-08
 
+**Class Notes*
 [https://gitlab.oit.duke.edu/colabroots/Webserver-Administration-for-Webapp-Developers](https://gitlab.oit.duke.edu/colabroots/Webserver-Administration-for-Webapp-Developers)
+
+**Linux@Duke Public Mirror**
+
+Clone URL:
+[https://github.com/LinuxAtDuke/ColabRoots-Webserver-Administration-for-Developers-MIRROR.git](https://github.com/LinuxAtDuke/ColabRoots-Webserver-Administration-for-Developers-MIRROR.git)
+
+Web URL:
+[https://github.com/LinuxAtDuke/ColabRoots-Webserver-Administration-for-Developers-MIRROR](https://github.com/LinuxAtDuke/ColabRoots-Webserver-Administration-for-Developers-MIRROR)
+
 
 Prerequisites
 -------------
