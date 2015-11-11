@@ -1,7 +1,7 @@
 Web Server Administration for WebApp Developers
 ==============================================
 
-Version: 2015-11-08
+Version: 2015-11-09
 
 **Class Notes**
 
