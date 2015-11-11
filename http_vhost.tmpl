@@ -1,0 +1,24 @@
+<VirtualHost *:80>
+
+  ServerName example.duke.edu
+  ServerAlias www.example.duke.edu
+  ServerAlias another.example.duke.edu
+
+  DocumentRoot /srv/example.duke.edu/html
+
+  DirectoryIndex index.php index.html
+
+  <Directory "/srv/example.duke.edu/html">
+    Options -Indexes +SymlinksIfOwnerMatch
+    AllowOverride None
+  </Directory>
+
+  <Location "/protected">
+    Order Allow,Deny
+    Deny from All
+  </Location>
+
+  CustomLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/access_log-%Y%m%d 86400" combined
+  ErrorLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/error_log-%Y%m%d 86400"
+
+</VirtualHost>
