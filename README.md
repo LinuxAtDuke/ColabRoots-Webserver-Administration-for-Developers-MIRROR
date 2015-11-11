@@ -394,6 +394,140 @@ It's impractical to remember to do this each time your server or  `iptables` ser
 
 That's it for `iptables` for now. We'll be adding more `iptables` rules later in the class, as we start up more services.  You are encouraged to go do some out-of-class reading about `iptables` to understand all that it can do.
 
+
+Basic Web Server Configuration
+------------------------------
+
+In this section, you'll learn:
+
+* How to install Apache's HTTP server
+* How to start and stop the server, and set it to start upon boot
+* How to setup Virtual Hosts, and answer to specific Server names
+* How to setup logging, and log rotation
+
+Apache is currently the most-used web server in the world.  It's slowly losing ground to a relatively new server, Nginx (pronounced Engine X), but Apache accounts for almost 50% of all the web servers in the world.  The benefit to using Apache is ease-of-use, but the trade of is (sometimes) performance.  We'll see how to get the most performance out of your Apache server, though, and how to easily configure it to serve web content.
+
+### Installing Apache's HTTP Server ###
+
+On RHEL-based systems, the package name for Apache is "httpd".  Installing httpd on RHEL is pretty easy:
+
+`$ sudo yum install -y httpd`
+
+And that's it.  Apache is installed on your server.  Class over.
+
+Well, not quite yet.  It's not actually doing anything yet, but it is configured to serve a simple web page out of the box. Let's go ahead an get a sample page setup, and start the server.
+
+### Starting and Stopping the Apache server ###
+
+As we did above with the SSH daemon, you will manage the Apache daemon with the "service" command.  To start the web server, run:
+
+`$ sudo service httpd start`
+
+(If you receive the error: "service: command not found", use `sudo /sbin/service httpd start` instead, or add `/sbin` to you PATH).
+
+Stopping, restating, reloading, etc. all use the same syntax:
+
+```
+$ sudo service httpd restart
+$ sudo service httpd reload
+```
+
+A useful trick to catch syntax errors or other issues that may cause the Apache to fail to restart is the built-in configuration test command:
+
+```
+$ sudo service httpd configtest
+Syntax OK
+```
+
+This will parse all of the Apache configs and loaded modules and look for issues that would prevent it from starting, or restarting, and allow you to troubleshoot before bringing down the service.
+
+### Setting Apache to Startup when the Server Boots ###
+
+By default, the httpd package does not automatically set Apache to start when the server boots up.  If your system reboots, for example, after patching, Apache would need to be manually started back up.  That's not really a practical approach for most admins.  
+
+The `chkconfig` command is used to enable or disable services for a given runlevel.  Most Linux servers are usually running in runlevel 3. (Runlevels are out of the scope of this class, but I encourage you to read [http://www.tldp.org/LDP/sag/html/run-levels-intro.html](http://www.tldp.org/LDP/sag/html/run-levels-intro.html) to learn more.)
+
+After installing the httpd package, you can check which runlevels the service is configured to start under:
+
+```
+$ chkconfig --list httpd
+httpd          	0:off	1:off	2:off	3:off	4:off	5:off	6:off
+```
+
+You can see in the output above that the httpd service is set to be "off" by default in all 7 runlevels.  That's not really useful for a web server, so it would make sense to enable it for runlevel 3.
+
+```
+$ chkconfig --level 3 httpd on
+$ chkconfig --list httpd
+chkconfig --list httpd
+httpd          	0:off	1:off	2:off	3:on	4:off	5:off	6:off
+```
+
+That's better.  You can see the httpd service has been enabled to run when the server enters runlevel 3.  Generally, though, we just enable httpd for all the standard runlevels that make sense for a service:
+
+```
+$ chkconfig httpd on
+$ chkconfig --list httpd
+httpd          	0:off	1:off	2:on	3:on	4:on	5:on	6:off
+```
+
+Your system is now set to start httpd automatically when it enters the "usual" runlevels for a server.
+
+_Note:_ Runlevels 0, 1 and 6 are "halt", "single-user mode", and "reboot", respectively.  It does not really make sense to be running the httpd service in those states.
+
+### Check your Handiwork ###
+
+At this point, you have a running Apache server.  Let's check it out.
+
+Copy the "index.html" file from the git repo you cloned earlier to `/var/www/html`, and then open your browser and navigate to "http://<name of your colab server>".
+
+### Configuring Apache ###
+
+Apaches primary configuration file is `/etc/httpd/conf/httpd.conf`.  This file contains a large number of global configurations and enables a basic server that serves content out of "/var/www/html", and places log files in "/var/log/httpd".  It's also configured to include files in "/etc/httpd/conf.d" if they end with ".conf".
+
+Virtual Hosts
+- Root Virtual Hosts
+
+- Multiple Virtual Hosts
+
+
+### Log Rotation ###
+- Logging
+- Log Formats
+    https://httpd.apache.org/docs/2.2/logs.html
+- Log Rotation
+- - Rotatelogs + tmpwatch
+    RotateLogs https://httpd.apache.org/docs/2.2/programs/rotatelogs.html
+    tmpwatch http://thelinuxfaq.com/100-how-to-use-tmpwatch-command-in-linux
+- - Logrotate http://www.rackspace.com/knowledge_center/article/understanding-logrotate-utility
+
+### Performance Tuning ###
+
+A lot of Apache's default configuration is designed to be either easy to use, or not really configured for a modern web hosting environment, at least out of the box.  This can lead to poor performance for your application, even with a small amount of load.  However, by tuning some settings, you can easily achieve significantly better performance.
+
+The quickest way to tune your server for best performance is to adjust the number of threads Apache uses to fit within the amount of memory available to your system.  This can be a balancing act.  If there are too few threads, visitors to your site will be stuck waiting for an open thread before the page can even begin to be rendered by their browser.  On the other hand, if there are too many threads, they can easily take up all the available memory on your server, and cause Apache to start writing memory to disk, and since the disk storage is much slower than memory, this will quickly lead to very poor performance from your server.  In severe cases, this can even cause the server to become completely unresponsive.
+
+Let's look at this a bit more closely.  The following is a snippet from the `httpd.conf` file showing the default configuration of Apache threads, using the default Multi-Processing Module (MPM):
+
+```
+<IfModule prefork.c>
+StartServers       8
+MinSpareServers    5
+MaxSpareServers   20
+ServerLimit      256
+MaxClients       256
+MaxRequestsPerChild  4000
+</IfModule>
+```
+
+The "Prefork MPM" (noted above as `prefork.c`) is a non-threaded, pre-forking web server, and is the module that's used if you don't make any changes to your Apache startup.  Apache is generally pretty good at self-managing process creation, so you likely will not need to adjust the `StartServers`, `MinSpareServers`, or `MaxSpareServers` settings.  StartServers is the number of processes Apache creates on startup.  MinSpareServers and MaxSpareServers are the minimum and maximum allowed idle processes, respectively.  (Idle processes are ones that are not handling any requests.)
+
+The more important settings to be aware of are the `ServerLimit`, `MaxClients`, and `MaxRequestsPerChild`.
+
+There are threaded MPMs as well ("Worker", and in Apache 2.4 "Event").  Threaded MPMs generally offer better performance, but can only be used if other modules in use are thread-safe.  For example, mod_php, the module for handling PHP processing, is not thread safe.  In order to use a threaded MPM with PHP, the PHP processing has to be offloaded to another service using something like FastCGI.
+
+
+
 ---
 
-Day Two starts Wednesday, November 11.
+Day Three start Thursday, November 12.
