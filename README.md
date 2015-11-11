@@ -483,9 +483,76 @@ Copy the "index.html" file from the git repo you cloned earlier to `/var/www/htm
 
 ### Configuring Apache ###
 
-Apaches primary configuration file is `/etc/httpd/conf/httpd.conf`.  This file contains a large number of global configurations and enables a basic server that serves content out of "/var/www/html", and places log files in "/var/log/httpd".  It's also configured to include files in "/etc/httpd/conf.d" if they end with ".conf".
+Apaches primary configuration file is `/etc/httpd/conf/httpd.conf`.  This file contains a large number of global configurations and enables a basic server that serves content out of "/var/www/html", and places log files in "/var/log/httpd".  It's also configured to include files in "/etc/httpd/conf.d" if they end with ".conf". The conf.d directory is the recommended place to put customizations to the Apache configuration.  This is where we will configure our Virtual Host.
 
-Virtual Hosts
+Virtual hosts are a way to run more than one website on a single server.  This may sound redundant if you are only planning on running a singe site anyway, but in combination with the conf.d directory, this allows you to setup and see at a glance the configurations that apply directly to your website.  This also allows you to decouple the website's name from the server's name, so you can move sites around more easily.  In practice, it's  helpful to have the server respond to it's own name for monitoring, statistics (like the server-status page we'll talk about later) and a default landing page for identification.  The virtual host (or hosts) can then be dedicated to running the websites.
+
+There are two types of virtual hosts: `IP-based` and `name-based`.  Ip-based virtual hosts tie a virtual host to a particular IP address on your server, and each virtual host requires it's own IP.  Name-based virtual hosts can share a single IP address and use the HOST header in the incoming request from the browser to direct traffic to the correct virtual host.
+
+Until relatively recently, IP-based virtual hosts were needed for any SSL-encrypted websites, but with the wider adoption of Server Name Indication (SNI), SSL-encrypted sites can use name-based virtual hosts, negating the need for multiple IP addresses.  
+
+We will use name-based virtual hosts for our class.
+
+### Setting up Your Virtual Host ###
+
+A very basic virtual host can consist of just a few lines:
+
+```
+<VirtualHost *:80>
+  ServerName example.duke.edu
+  DocumentRoot /var/www/example.duke.edu
+</VirtualHost>
+```
+
+This basically says "Listening on port 80, for any request for 'example.duke.edu', serve content from 'var/www/example.duke.edu'".  All other configurations are inherited from the global config file in /etc/httpd/conf/httpd.conf.  You'll probably want something a bit more individual, though.
+
+Copy the contents of the `http_vhost.tmpl` file from the git repository you cloned into a new vhost file: /etc/httpd/conf.d/example.conf
+
+Looking at that file, let's look at each section in order:
+
+```
+ServerName example.duke.edu
+ServerAlias www.example.duke.edu
+ServerAlias another.example.duke.edu
+```
+This section tells Apache what the name of the virtual host is - ie. the URL at which your site will be viewed.  The `ServerName` directive is the primary name for the site, and when the server itself references the site (e.g. the %{SERVER_NAME} variable), it will use this name.  `ServerAliases` tell Apache to listed for other, alternate names, and to direct them to this virtual host as well.
+
+```
+DocumentRoot /srv/example.duke.edu/html
+```
+
+The `DocumentRoot` is the directory where your website's files live - the root of the website.  In the example above, `/srv/example.duke.edu/html/index.html` is the file served when you browse to 'http://example.duke.edu/index.html'
+
+```
+DirectoryIndex index.php index.html
+```
+
+The DirectoryIndex directive tells Apache which files to look for, and in what order, to serve as the default page for a directory if it's not specified.  Using the example from above, if you browse to 'http://example.duke.edu/', you are not specifiying a file to be served.  The DirectoryIndex will tell Apache to first look for an index.php file, and if it exists, serve that, and if there is none, to try to find an index.html to serve.  
+
+```
+<Directory "/srv/example.duke.edu/html">
+  Options -Indexes +SymlinksIfOwnerMatch
+  AllowOverride None
+</Directory>
+```
+
+The ``<Directory>`` stanza tells Apache to apply a set of rules to that directory, and each directory inside of it will inherit these rules unless specifically overridden.  In this example, we've explicitly disabled the `Indexes` option, and enabled the `SymLinksIfOwnerMatch` option.  
+
+The `AllowOverride` directive tells Apache whether or not the `Options` directive can be overridden for a directory by using a ".htaccess" file - a common way to give website owners more control over the behavior of their site.
+
+```
+<Location "/protected">
+  Order Allow,Deny
+  Deny from All
+</Location>
+```
+
+Unlike `<Directory>`, which referes to a **physical location on the filesystem of the webserver**, the `<Location>` stanza refers to a **URI**, or a location relative to the website itself.  In this example, it refers to "example.duke.edu/protected" (and www.example..., and another.example...).
+
+
+CustomLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/access_log-%Y%m%d 86400" combined
+ErrorLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/error_log-%Y%m%d 86400"
+
 - Root Virtual Hosts
 
 - Multiple Virtual Hosts
@@ -577,9 +644,6 @@ In this case, having a low MaxRequestsPerChild will help some.  Brand new Apache
 In this case, this is a server with a WordPress website installed on it.  The developer is not particularly skilled at memory management, and the site owner cannot afford more memory, so the server's performance is poor.  The threads are tuned, however, to prevent the server from becoming completely unresponsive.
 
 (There are other ways to handle this as well.  If this server were newer, it could be using PHP-FPM and Apache's Worker or Event MPMs.  Passing off the PHP processing to PHP-FPM is helpful, because it handles memory management better, so there can be more PHP-FPM processes than equivalent Apache+mod_php processes.  This also frees Apache up to handle only static content, making it more efficient as well, and allowing more total Apache threads.
-
-
-
 
 
 ---
