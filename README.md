@@ -3,6 +3,8 @@ Web Server Administration for WebApp Developers
 
 Version: 2015-11-09
 
+Instructor: Chris Collins <christopher.collins@duke.edu>
+
 **Class Notes**
 
 [https://gitlab.oit.duke.edu/colabroots/Webserver-Administration-for-Webapp-Developers](https://gitlab.oit.duke.edu/colabroots/Webserver-Administration-for-Webapp-Developers)
