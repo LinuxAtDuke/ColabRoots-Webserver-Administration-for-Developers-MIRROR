@@ -836,7 +836,7 @@ In addition to the module itself, it will place a file, `ssl.conf`, into your /e
 
 Open the ssl.conf file and modify the following lines as shown.
 
-\1. Remove the Virtual Host tags.  Most of the configurations for the ssl.conf, by default, apply only to the default vhost, as is.  Commenting out these two lines will apply them to all the virtual hosts.
+* Remove the Virtual Host tags.  Most of the configurations for the ssl.conf, by default, apply only to the default vhost, as is.  Commenting out these two lines will apply them to all the virtual hosts.
 
 ```
 <VirtualHost _default_:443>
@@ -845,7 +845,7 @@ Open the ssl.conf file and modify the following lines as shown.
 </VirtualHost>
 ```
 
-\2. The SSLEngine should not be enabled globally, either:
+* The SSLEngine should not be enabled globally, either:
 
 Comment out the SSLEngine line:
 
@@ -853,7 +853,7 @@ Comment out the SSLEngine line:
 SSLEngine On
 ```
 
-\3. Next, harden the SSL Protocols in use.
+* Next, harden the SSL Protocols in use.
 
 Mozilla.org maintains a page with recommended, secure SSL Protocols and Cipher Suites to use: [https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility)
 
@@ -867,7 +867,7 @@ SSLProtocol TLSv1.1 TLSv1.2
 
 This enables only TLS versions 1.1 and 1.2; SSL version 1, 2 and 3 are all known to have vulnerabilities, and TLS 1.0 is officially deprecated in June 2016 due to it's own vulnerabilities.
 
-\4. Change the SSLCipherSuite to use stronger ciphers:
+* Change the SSLCipherSuite to use stronger ciphers:
 
 Change the SSLCipherSuite directive to use the ciphers recommended by Mozilla on the page above:
 
