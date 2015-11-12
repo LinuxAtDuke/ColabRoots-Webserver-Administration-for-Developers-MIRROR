@@ -925,3 +925,32 @@ Finally the `SSLCACertificateFile` is the path to the intermediate certificate f
 The paths `/etc/pkl/tls/certs` and `/etc/pki/tls/private` are the standard locations for certs and keys, respectively, on RHEL servers.  
 
 _Note:_ The certificates and key above should be in place before attempting to restart the httpd service.
+
+### Rewriting Traffic to HTTPS ###
+
+As mentioned above, there is ample good reason to encrypt all traffic in transit, regardless of what it is.  This can be easily accomplished with a single RewriteRule.  The example snippet below is included in the "rewrite_to_https.tmpl" file as well.
+
+```
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteRule .* https://%{SERVER_NAME}%{REQUEST_URI} [R=301,L]
+```
+
+This is a generic snippet that can be included in any virtual host to perform a 1-to-1 redirect of all traffic to the HTTPS virtual host matching the ServerName of the virtual host.  In fact, by including this RewriteRule, the http_vhost.tmpl can be significantly reduced, since the HTTP virtual host will no longer be doing anything except redirecting:
+
+```
+<VirtualHost *:80>
+
+  ServerName example.duke.edu
+  ServerAlias www.example.duke.edu
+  ServerAlias another.example.duke.edu
+
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteRule .* https://%{SERVER_NAME}%{REQUEST_URI} [R=301,L]
+
+  CustomLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/access_log-%Y%m%d 86400" combined
+  ErrorLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/error_log-%Y%m%d 86400"
+
+</VirtualHost>
+```
