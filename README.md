@@ -878,3 +878,50 @@ We also want to tell browsers to honor the cipher order we are presenting above.
 ```
 SSLHonorCipherOrder on
 ```
+
+Making these changes harden the SSL configuration of your server, and make sure it's using the most secure protocols and cipher suites.  It's important to check back every few months to see if any changes have been made to the recommendations.  The Mozilla site is extremely useful for tracking changes as new vulnerabilities are discovered and new technologies are released.
+
+### Configure an HTTPS Virtual Host ###
+
+Within the git repo, you'll find a template for an HTTPS virtual host, named "https_vihost.tmpl".
+
+You'll see it's identical to the http_vhost.tmpl, with the exception of the following:
+
+```
+diff http_vhost.tmpl https_vhost.tmpl
+1c1
+< <VirtualHost *:80>
+---
+> <VirtualHost *:443>
+10a11,15
+>   SSLEngine on
+>   SSLCertificateFile /etc/pki/tls/certs/example.duke.edu.crt
+>   SSLCertificateKeyFile /etc/pki/tls/private/example.duke.edu.key
+>   SSLCACertificateFile /etc/pki/tls/certs/example-intermediate-CA.crt
+>
+21,22c26,27
+<   CustomLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/access_log-%Y%m%d 86400" combined
+<   ErrorLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/error_log-%Y%m%d 86400"
+---
+>   CustomLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/ssl_access_log-%Y%m%d 86400" combined
+>   ErrorLog "|bin/rotatelogs -l /var/logs/httpd/example.duke.edu/ssl_error_log-%Y%m%d 86400"
+```
+
+Notice that the https_vhost file is listening on port 80 instead of port 443, but that like the http vhost, it's using name-based virtual hosting. The error logs are also  slightly modified, allowing us to separate HTTPS traffic into a different set of logs for easy troubleshooting.
+
+The big change is this stanza:
+
+```
+SSLEngine on
+SSLCertificateFile /etc/pki/tls/certs/example.duke.edu.crt
+SSLCertificateKeyFile /etc/pki/tls/private/example.duke.edu.key
+SSLCACertificateFile /etc/pki/tls/certs/example-intermediate-CA.crt
+```
+
+The `SSLEngine on` directive is explicitly turning on encryption for this virtual host.  `SSLCertificateFile` and `SSLCertificateKeyFile` tell Apache where to look for the certificate and key to use for the encryption.
+
+Finally the `SSLCACertificateFile` is the path to the intermediate certificate for the Certificate Authority.  In some cases, the certificate authority may not have it's own intermediate certificate included in the general ca-bundle store on the server or client.  This is the case for Incommon, the certificate authority used by Internet2 and Duke.  Without the inclusion of the intermediate certificate, the certificate chain is incomplete and unable to validate the trust for the server certificate.  The `SSLCaCertfile` directive tells Apache where the intermediate cert is, in order to complete the chain.
+
+The paths `/etc/pkl/tls/certs` and `/etc/pki/tls/private` are the standard locations for certs and keys, respectively, on RHEL servers.  
+
+_Note:_ The certificates and key above should be in place before attempting to restart the httpd service.
