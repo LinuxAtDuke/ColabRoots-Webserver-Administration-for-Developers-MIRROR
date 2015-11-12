@@ -992,3 +992,77 @@ Credential Resolver section:
 
 It is possible to register more than one application and serve it with the same Shibboleth service.  If you would like to do this, look into adding more "<Host>" sections to the <RequestMapper>,
 and adding an "<ApplicationOverride>" section for each additional host.  The Shibboleth documentation online is helpful for this, and OIT will be happy to help provide examples as well.
+
+You can register your SP with OIT's IDP using an online regisration form: https://idms-web.oit.duke.edu/spreg/sps
+
+By default, students do not have direct access to this form, but those of you in the class have been given access to use it.  Normally, you should contact the OIT Service Desk to work with the Identity Management team on this process.
+
+Once at that URL , choose "New Registration".  
+
+On this form, you'll have to use the same information as you entered in the Shibboleth2.xml file.
+
+All fields are required, the important ones are:
+
+* Entity - the entityID you are registering
+* Certificate - the TLS certificate you are using with Shibboleth
+* Assertion Consumer Service - Change the "Location" field, replacing "your.host" with your actual host.  Leave the rest alone.  This would look like: "https://example.duke.edu/Shibboleth.sso/SAML2/POSThttps://your.host/Shibboleth.sso/SAML2/POST
+
+Registration usually takes just a moment before it is functional.
+
+It was mentioned above that Shibboleth can send information about the users as part of the authentication process.  This is done with "Attributes".  By default, the "eduPersonScopedAffiliation" and "EduPersonPrincipleName" are sent in reply to the SP.  The former is "staff@duke.edu, or student@duke.edu, etc."  The latter, referred to as "eppn", is the scoped "netid@duke.edu".  There are other attributes that can be passed, including mail, given name, title, etc.  
+
+For each attribute that is passed by the IDP, the Shibboleth SP needs to know how to map them to Apache Server Headers.  A good default one to use is provided in the "attribute-map.xml.tmpl".  Replace the existing attribute-map.xml file in your /etc/shibboleth directory with this one.
+
+Let's look at an example from this file:
+
+```
+<Attribute name="urn:oid:1.3.6.1.4.1.5923.1.1.1.6" id="eppn">
+```
+
+This is the attribute mapping for the eppn.  It's actually coming from the IDPs as "urn:oid:1.3.6.1.4.1.5923.1.1.1.6".  By setting the id as "eppn", the Apache HTTP headers will map the value for the eppn to the "eppn" variable.
+
+Another example:
+
+```
+<Attribute name="urn:oid:0.9.2342.19200300.100.1.3" id="mail"/>
+```
+
+In this case Shibboleth will map the email address for the user to the Apache HTTP header variable "mail".
+
+These attributes can be used by your application to identify the user and make authorization decisions based on the information.  Alternatively, you can have Apache manage authorization using Shibboleth.
+
+The following stanza enables Shibboleth for the entire site, and requires that the authenticated user be a Duke staff member or student:
+
+```
+  <Location />
+      AuthType Shibboleth
+      ShibRequestSetting applicationId default
+      ShibRequestSetting requireSession True
+      ShibUseHeaders On
+      require staff@duke.edu student@duke.edu
+  </Location>
+```
+
+This is an example of a forced Shibboleth authentication.  By setting "requireSession True", when you visit the page, Apache will immediately direct you to the Shibboleth IDP to authenticate, unless you have already done so.  In this example, the "Affiliation" (staff@duke.edu, student@duke.edu) are being used for authorization.  You can use other attributes for authorization as well:
+
+```
+# Authorize based on NetID
+require user netid@duke.edu netid2@duke.edu
+
+# Authorize based on group membership
+require ismemberof "urn:mace:duke.edu:groups:oit:sysadmins:all"
+```
+
+In some cases you may not want to force a user to login to Shibboleth until they attempt to login to your webapp.  In these cases, it's appropriate to use "Lazy Sessions":
+
+```
+  <Location />
+      AuthType Shibboleth
+      ShibRequestSetting applicationId default
+      ShibRequestSetting requireSession False
+      ShibUseHeaders On
+      require shibboleth
+  </Location>
+```
+
+Here we're setting the "requireSession False".  This leave Shibboleth active, but awaiting a signal from  your application to start the authentication process.  In this case your application will have to decide if the authentication information is or is not available, and if not, kick off a Shibboleth session.  More information about this, and how to direct users to a login url, is available in the Shibboleth documentation.  Good examples to use as a starting point are the WordPress Shibboleth plugin and the Drupal Shibboleth plugin - each handles authorization, and works with lazy sessions.  They are available free on their respective websitess.
