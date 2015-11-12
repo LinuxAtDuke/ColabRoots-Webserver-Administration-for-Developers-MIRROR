@@ -954,3 +954,41 @@ This is a generic snippet that can be included in any virtual host to perform a 
 
 </VirtualHost>
 ```
+
+### Shibboleth Authentication ###
+
+Shibboleth [https://shibboleth.net/](https://shibboleth.net/) is a centralized authentication service that can provide authentication information about individuals to applications.  The applications (either a webapp, or a service running on the server, like Apache or Tomcat) can use this information to make authorization decisions for access to protected resources.
+
+Shibboleth is made up of two main components, an Identity Provider (IDP) run by a central authority, and a Service Provider (SP), the Shibboleth service on your server.  Duke's Office of Information Technology maintains a central IDP for the campus, which has information about all Duke people.  You will be learning how to setup an SP on your server.
+
+For this, you will re-use the TLS certificate and key you generated for the webserver.  You can either use the same pair or generate a new pair.  It does not really matter, practically speaking.
+
+First install the Shibboleth package, and enable and start the service, as done with the httpd package.  This will also install mod_shib, allowing Apache to work with the Shibboleth service.
+
+Note the `--nogpgcheck` argument to the `yum` command.  This is acceptable only for this class.  In the real world, you should go through the process of importing the appropriate GPG keys for the repositories you're using.
+
+```
+$ sudo yum install -y shibboleth --nogpgcheck
+$ sudo chkconfig shibboleth on
+$ sudo service shibd start
+```
+
+After installing the package, copy your cert and key to "/etc/shibboleth" (purely for ease of use).
+
+The primary Shibboleth configuration file is the /etc/shibboleth/shibboleth2.xml file.  It's a somewhat complicated and intimidating file, so a template is included.  This template has a default setup, using your base server name as the primary shibboleth application.
+
+The key items here are the -
+
+Request Mapper section:
+* #HOST NAME# - the domain name of your site, ie: "example.duke.edu"
+
+Application Defaults section:
+* #ENTITY ID# - the entityID you registered with the IDP; it's suggested to use the full base URL of your site, ie: "https://example.duke.edu"
+* #HOME URL# - the base url of the site, ie "https://example.duke.edu"
+
+Credential Resolver section:
+* #DEFAULT APP KEY# - the full path to your server's TLS key
+* #DEFAULT APP CRT# - the full path to your server's TLS cert
+
+It is possible to register more than one application and serve it with the same Shibboleth service.  If you would like to do this, look into adding more "<Host>" sections to the <RequestMapper>,
+and adding an "<ApplicationOverride>" section for each additional host.  The Shibboleth documentation online is helpful for this, and OIT will be happy to help provide examples as well.
