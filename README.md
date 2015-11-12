@@ -836,7 +836,7 @@ In addition to the module itself, it will place a file, `ssl.conf`, into your /e
 
 Open the ssl.conf file and modify the following lines as shown.
 
-1. Remove the Virtual Host tags.  Most of the configurations for the ssl.conf, by default, apply only to the default vhost, as is.  Commenting out these two lines will apply them to all the virtual hosts.
+\1. Remove the Virtual Host tags.  Most of the configurations for the ssl.conf, by default, apply only to the default vhost, as is.  Commenting out these two lines will apply them to all the virtual hosts.
 
 ```
 <VirtualHost _default_:443>
@@ -845,7 +845,7 @@ Open the ssl.conf file and modify the following lines as shown.
 </VirtualHost>
 ```
 
-2. The SSLEngine should not be enabled globally, either:
+\2. The SSLEngine should not be enabled globally, either:
 
 Comment out the SSLEngine line:
 
@@ -853,7 +853,7 @@ Comment out the SSLEngine line:
 SSLEngine On
 ```
 
-3. Next, harden the SSL Protocols in use.
+\3. Next, harden the SSL Protocols in use.
 
 Mozilla.org maintains a page with recommended, secure SSL Protocols and Cipher Suites to use: [https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility)
 
@@ -867,7 +867,7 @@ SSLProtocol TLSv1.1 TLSv1.2
 
 This enables only TLS versions 1.1 and 1.2; SSL version 1, 2 and 3 are all known to have vulnerabilities, and TLS 1.0 is officially deprecated in June 2016 due to it's own vulnerabilities.
 
-4. Change the SSLCipherSuite to use stronger ciphers:
+\4. Change the SSLCipherSuite to use stronger ciphers:
 
 Change the SSLCipherSuite directive to use the ciphers recommended by Mozilla on the page above:
 
@@ -1067,4 +1067,4 @@ In some cases you may not want to force a user to login to Shibboleth until they
   </Location>
 ```
 
-Here we're setting the "requireSession False".  This leave Shibboleth active, but awaiting a signal from  your application to start the authentication process.  In this case your application will have to decide if the authentication information is or is not available, and if not, kick off a Shibboleth session.  More information about this, and how to direct users to a login url, is available in the Shibboleth documentation.  Good examples to use as a starting point are the WordPress Shibboleth plugin and the Drupal Shibboleth plugin - each handles authorization, and works with lazy sessions.  They are available free on their respective websitess.
+Here we're setting the "requireSession False".  This leaves Shibboleth active, but awaiting a signal from  your application to start the authentication process.  In this case your application will have to decide if the authentication information is or is not available, and if not, kick off a Shibboleth session.  More information about this, and how to direct users to a login url, is available in the Shibboleth documentation.  Good examples to use as a starting point are the WordPress Shibboleth plugin and the Drupal Shibboleth plugin - each handles authorization, and works with lazy sessions.  They are available free on their respective websitess.
