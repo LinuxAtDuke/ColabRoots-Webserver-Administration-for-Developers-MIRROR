@@ -745,6 +745,136 @@ In this case, this is a server with a WordPress website installed on it.  The de
 (There are other ways to handle this as well.  If this server were newer, it could be using PHP-FPM and Apache's Worker or Event MPMs.  Passing off the PHP processing to PHP-FPM is helpful, because it handles memory management better, so there can be more PHP-FPM processes than equivalent Apache+mod_php processes.  This also frees Apache up to handle only static content, making it more efficient as well, and allowing more total Apache threads.
 
 
----
+Webserver Security
+------------------
 
-Day Three start Thursday, November 12.
+This section will focus on HTTPS (TLS/SSL encrpytion), how to generate TLS certificates, configuring secure TLS settings, and how to configure virtual hosts to use SSL certificates.  Also included in this section is installing the Shibboleth service, configuring a Shibboleth Service Provider, and registering with Duke's Shibboleth Identity Provider.
+
+### HTTPS & TLS ###
+
+HTTPS is HTTP over TLS or SSL. It allows you to encrypt traffic between a browser and web server, providing privacy and security for clients.  While the name "SSL" is more widely known, TLS has relatively recently supplanted SSL as the more secure protocol, and in fact there is no version of SSL that is considered secure as of the time of this writing.
+
+Over all, the world is moving ever closer to HTTPS everywhere - not just encrypting secure data, but _all_ data, and there has been a push for more privacy and security overall.  Major companies like Google and Mozilla are securing traffic by default for all their applications.  Cloudflare is offering free HTTPS encryption between clients and their severs, and Let’sEncrypt, a new Certificate Authority, has started offering free, secure TLS certificates.
+
+Given the processing power available to even the cheapest hosting services, it is no longer the case that TLS encryption is an expensive operation.  Given the benefits, there's really no go reason to not use it everywhere.  This section will show how to install mod_ssl, configure the default settings for a secure setup, and enable encryption for an entire website.
+
+TLS works by generating a secret key, and a certificate request.  The key remains secret, installed on your server.  The certificate request contains information about you, your organization and your domain.   The certificate request is submitted to a Certificate Signing Authority (CA), who then creates a certificate and signs it, certifying that they have trust you are the owner of the domain requested.  They, in turn, are trusted by client's browsers, forming a trust chain between your server and your client.
+
+### Generate a Key, Certificate Request, and Self-Signed Certificate ###
+
+**On Your Server**
+
+Generate a key:
+```
+# Generate a key, named example.duke.edu.key, with 4096 bits
+$ openssl genrsa -out example.duke.edu.key 4096
+Generating RSA private key, 4096 bit long modulus
+.......................................................................................................................................................................................................................................................++
+...........................................................++
+e is 65537 (0x10001)
+```
+
+Using the key, generate a certificate request:
+```
+# Generate a certificate request with contact information
+$ openssl req -new -nodes -key example.duke.edu.key -out example.duke.edu.csr
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:US
+State or Province Name (full name) []:NorthCarolina
+Locality Name (eg, city) [Default City]:Durham
+Organization Name (eg, company) [Default Company Ltd]:Duke University
+Organizational Unit Name (eg, section) []:Co-Lab Class
+Common Name (eg, your name or your server's hostname) []:example.duke.edu
+Email Address []:christopher.collins@duke.edu
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+```
+
+You now have a key and certificate request.  You can provide your certificate request to a certificate authority, and they will sign a certificate for you to use.  Duke University has an agreement with the Internet2 Certificate Authority, InCommon, and can provide free certificates for "duke.edu" domains.  You can request a certificate by filling out this form:
+
+[https://duke.service-now.com/nav_to.do?uri=/com.glideapp.servicecatalog_cat_item_view.do?sysparm_id=fe0bd9dfa851a1009de75b2cea15c4c0](https://duke.service-now.com/nav_to.do?uri=/com.glideapp.servicecatalog_cat_item_view.do?sysparm_id=fe0bd9dfa851a1009de75b2cea15c4c0)
+
+While the above process is fast, it does take up to a day or two to complete, so for this class, we're going to continue with a self-signed certificate.
+
+**For a real service, NEVER use a self-signed certificate.  It is extremely easy to perform a man-in-the-middle attack if self-signed certificates are in use.**
+
+For this class ONLY, generate a self-signed certificate:
+```
+# Generate an UNTRUSTED self-signed certificate using your csr
+$ openssl x509 -req -days 90 -in example.duke.edu.csr -signkey example.duke.edu.key -out example.duke.edu.crt
+Signature ok
+subject=/C=US/ST=NorthCarolina/L=Durham/O=Duke Univesity/OU=Co-Lab Class/CN=example.duke.edu/emailAddress=christopher.collins@duke.edu
+Getting Private key
+```
+
+You should now have a key, certificate request, and self-signed certificate:
+
+1. example.duke.edu.key
+2. example.duke.edu.csr
+3. example.duke.edu.crt
+
+### Install and Configure mod_ssl for Apache ###
+
+Installing mod_ssl for Apache is done in a similar manner as we've done before:
+
+```
+$ sudo yum install -y mod_ssl
+```
+
+In addition to the module itself, it will place a file, `ssl.conf`, into your /etc/httpd/conf.d directory.  This is the server-wide configuration for SSL/TLS.  As with the other default configuration files, it is not in the best state initially.  Specifically, there are two **very important** changes that need to be made:  the SSL Protocol list and the SSL Cipher Suite list.
+
+Open the ssl.conf file and modify the following lines as shown.
+
+1. Remove the Virtual Host tags.  Most of the configurations for the ssl.conf, by default, apply only to the default vhost, as is.  Commenting out these two lines will apply them to all the virtual hosts.
+
+```
+<VirtualHost _default_:443>
+```
+```
+</VirtualHost>
+```
+
+2. The SSLEngine should not be enabled globally, either:
+
+Comment out the SSLEngine line:
+
+```
+SSLEngine On
+```
+
+3. Next, harden the SSL Protocols in use.
+
+Mozilla.org maintains a page with recommended, secure SSL Protocols and Cipher Suites to use: [https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility)
+
+Specifically, the Modern compatibility recommendations are the ones to use for the most secure option.  You're looking for the "Ciphersuite" and "Versions" items, for the Cipher Suite and Protocols, respectively.
+
+In the ssl.conf, change the SSLProtocol directive to be:
+
+```
+SSLProtocol TLSv1.1 TLSv1.2
+```
+
+This enables only TLS versions 1.1 and 1.2; SSL version 1, 2 and 3 are all known to have vulnerabilities, and TLS 1.0 is officially deprecated in June 2016 due to it's own vulnerabilities.
+
+4. Change the SSLCipherSuite to use stronger ciphers:
+
+Change the SSLCipherSuite directive to use the ciphers recommended by Mozilla on the page above:
+
+```
+SSLCipherSuite ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK
+```
+
+We also want to tell browsers to honor the cipher order we are presenting above.  Add the line:
+
+```
+SSLHonorCipherOrder on
+```
